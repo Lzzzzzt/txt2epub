@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ title }}</title>
+  <link rel="stylesheet" type="text/css" href="./stylesheet.css" />
+</head>
+<body>
+  <div>
+    <h3>第{{ no }}卷</h3>
+    <h2>{{ title }}</h2>
+    <br />
+    <div>
+      {%- for line in preface %}
+      <p class="preface">{{ line }}</p>
+      {%- endfor %}
+    </div>
+  </div>
+</body>
+</html>

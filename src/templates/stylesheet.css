@@ -1,0 +1,30 @@
+h2 {
+    text-indent: 0;
+    text-align: center;
+    line-height: 100%;
+    font-size: 2.25em;
+    font-weight: bold;
+}
+h3 {
+    text-indent: 0;
+    text-align: center;
+    line-height: 125%;
+    font-size: 1.5em;
+    font-weight: bold;
+}
+p {
+    text-indent: 2em;
+    margin: 0;
+    line-height: 150%;
+}
+.preface {
+    text-align: center;
+    text-indent: 0em;
+}
+.empty {
+    text-indent: 0;
+    text-align: center;
+    line-height: 100%;
+    font-size: 2.5em;
+    font-weight: bold;
+}
