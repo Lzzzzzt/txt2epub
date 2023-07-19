@@ -5,7 +5,7 @@ use log::debug;
 use serde::Serialize;
 use tera::Context;
 
-use crate::{WriteToEpub, TEMPLATE_ENGINE};
+use crate::{WriteToEpub, HAVE_SECTIONS, TEMPLATE_ENGINE};
 
 #[derive(Debug)]
 pub struct Chapter {
@@ -91,14 +91,24 @@ impl WriteToEpub for SerChapter {
 
         debug!("writing chapter: {}", &title);
 
-        epub.add_content(
-            EpubContent::new(
-                format!("P{:02}C{:04}.html", self.part_no, self.no),
-                self.into_html_string()?.as_bytes(),
-            )
-            .title(title)
-            .level(2),
-        )?;
+        if unsafe { HAVE_SECTIONS } {
+            epub.add_content(
+                EpubContent::new(
+                    format!("P{:02}C{:04}.html", self.part_no, self.no),
+                    self.into_html_string()?.as_bytes(),
+                )
+                .title(title)
+                .level(2),
+            )?;
+        } else {
+            epub.add_content(
+                EpubContent::new(
+                    format!("C{:04}.html", self.no),
+                    self.into_html_string()?.as_bytes(),
+                )
+                .title(title),
+            )?;
+        }
 
         Ok(epub)
     }

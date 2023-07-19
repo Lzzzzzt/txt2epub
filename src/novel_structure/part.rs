@@ -8,7 +8,7 @@ use regex::Regex;
 use serde::Serialize;
 use tera::Context;
 
-use crate::{WriteToEpub, TEMPLATE_ENGINE};
+use crate::{WriteToEpub, HAVE_SECTIONS, TEMPLATE_ENGINE};
 
 use super::chapter::Chapter;
 
@@ -54,7 +54,9 @@ impl Part {
     {
         let title_regex = Regex::new(r"^第.*章 (.*)$")?;
 
-        debug!("scanning novel chapter of part: {}.", self.title);
+        if unsafe { HAVE_SECTIONS } {
+            debug!("scanning novel chapter of part: {}.", self.title);
+        }
 
         file.seek(SeekFrom::Start(self.start))?;
 
@@ -155,13 +157,15 @@ impl WriteToEpub for SerPart {
     ) -> Result<&mut EpubBuilder<ZipLibrary>, Box<dyn std::error::Error>> {
         let title = self.title_string();
 
-        epub.add_content(
-            EpubContent::new(
-                format!("P{:02}.html", self.no),
-                self.into_html_string()?.as_bytes(),
-            )
-            .title(title),
-        )?;
+        if unsafe { HAVE_SECTIONS } {
+            epub.add_content(
+                EpubContent::new(
+                    format!("P{:02}.html", self.no),
+                    self.into_html_string()?.as_bytes(),
+                )
+                .title(title),
+            )?;
+        }
 
         Ok(epub)
     }

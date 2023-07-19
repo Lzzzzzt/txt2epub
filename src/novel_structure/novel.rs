@@ -4,13 +4,13 @@ use std::{
 };
 
 use anyhow::Result;
-use log::{debug, warn};
+use log::{debug, info, warn};
 use regex::Regex;
 
 use crate::{
     get_cover_image,
     novel_structure::{chapter::SerChapter, SerMetaData},
-    EpubBuilderMut, WriteToEpub,
+    EpubBuilderMut, WriteToEpub, HAVE_SECTIONS,
 };
 
 use super::{part::Part, Metadata};
@@ -108,9 +108,42 @@ impl Novel {
     where
         F: BufRead + Seek,
     {
+        debug!("scanning novel parts.");
+
+        self.check_part_range(file)?;
+
+        debug!("found {} parts", self.parts.len());
+        debug!(
+            "{:#?}",
+            self.parts
+                .iter()
+                .map(|p| p.title.clone())
+                .collect::<Vec<_>>()
+        );
+
+        if self.parts.is_empty() {
+            info!("No part has been found.");
+            info!("Treat whole novel as a part.");
+            unsafe { HAVE_SECTIONS = false };
+            self.make_whole_chapter_as_a_part(file)?;
+        }
+
         file.rewind()?;
 
-        debug!("scanning novel parts.");
+        let mut global_chapter_number = 0;
+
+        for part in self.parts.iter_mut() {
+            part.scan_chapters(file, &mut global_chapter_number)?;
+        }
+
+        Ok(())
+    }
+
+    fn check_part_range<F>(&mut self, file: &mut F) -> Result<()>
+    where
+        F: BufRead + Seek,
+    {
+        file.rewind()?;
 
         let mut line = String::new();
 
@@ -142,23 +175,39 @@ impl Novel {
             part.end = file.stream_position()?;
         }
 
-        debug!("found {} parts", self.parts.len());
-        debug!(
-            "{:#?}",
-            self.parts
-                .iter()
-                .map(|p| p.title.clone())
-                .collect::<Vec<_>>()
-        );
+        Ok(())
+    }
 
+    fn make_whole_chapter_as_a_part<F>(&mut self, file: &mut F) -> Result<()>
+    where
+        F: Seek + BufRead,
+    {
         file.rewind()?;
 
-        let mut gcn = 0;
+        let mut line = String::new();
 
-        for part in self.parts.iter_mut() {
-            part.scan_chapters(file, &mut gcn)?;
+        let chapter_regex = Regex::new(r"^第.+[章] (.*)$")?;
+
+        while let Ok(len) = file.read_line(&mut line) {
+            if len == 0 {
+                break;
+            }
+
+            if chapter_regex.is_match(line.trim()) {
+                self.parts.push(Part::new(
+                    0,
+                    "".into(),
+                    "".into(),
+                    file.stream_position()? - line.as_bytes().len() as u64,
+                ));
+
+                break;
+            }
+
+            line.clear();
         }
 
+        self.parts[0].end = file.seek(std::io::SeekFrom::End(0))?;
         Ok(())
     }
 }

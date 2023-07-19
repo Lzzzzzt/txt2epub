@@ -6,10 +6,10 @@ use clap::Parser;
 /// Convert TXT file to Epub
 pub struct CLIOptions {
     #[clap(index = 1)]
-    /// The Files that need to be convert
+    /// The Files those need to be convert into epub
     pub files: Vec<PathBuf>,
-    #[clap(long)]
-    /// Output dir
+    #[clap(short, long)]
+    /// Output directory
     pub out_dir: Option<PathBuf>,
 }
 

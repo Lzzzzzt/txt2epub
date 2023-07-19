@@ -19,7 +19,7 @@ p {
 }
 .preface {
     text-align: center;
-    text-indent: 0em;
+    text-indent: 0;
 }
 .empty {
     text-indent: 0;

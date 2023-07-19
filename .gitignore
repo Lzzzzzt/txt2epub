@@ -1,3 +1,9 @@
 /target
 /book
 /novels
+
+.DS_Store
+
+/.fleet
+/.vscode
+/.idea
