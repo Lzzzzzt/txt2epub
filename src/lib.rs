@@ -27,7 +27,6 @@ pub mod parse;
 static NOVEL_PART_TEMPLATE: &str = include_str!("templates/part.html");
 static NOVEL_CHAPTER_TEMPLATE: &str = include_str!("templates/chapter.html");
 static NOVEL_INTRO_TEMPLATE: &str = include_str!("templates/intro.html");
-static NOVEL_NO_PART_TEMPLATE: &str = include_str!("templates/no_part.html");
 
 pub static NOVEL_CSS: &str = include_str!("templates/stylesheet.css");
 pub static mut HAVE_SECTIONS: bool = true;
@@ -40,8 +39,7 @@ lazy_static! {
             .unwrap();
         tera.add_raw_template("intro", NOVEL_INTRO_TEMPLATE)
             .unwrap();
-        tera.add_raw_template("no_part", NOVEL_NO_PART_TEMPLATE)
-            .unwrap();
+
         tera
     };
 }
