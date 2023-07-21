@@ -1,19 +1,15 @@
-use std::{
-    error::Error,
-    io::{BufRead, Seek},
-};
+use std::io::{BufRead, Seek};
 
 use anyhow::Result;
-use log::{debug, info, warn};
+use log::{debug, info};
 use regex::Regex;
 
 use crate::{
-    get_cover_image,
-    novel_structure::{chapter::SerChapter, SerMetaData},
-    EpubBuilderMut, WriteToEpub, HAVE_SECTIONS,
+    error::AnyError, novel_structure::chapter::SerChapter, EpubBuilderMut, WriteToEpub,
+    HAVE_SECTIONS,
 };
 
-use super::{part::Part, Metadata};
+use super::{novel_options::NovelOptions, part::Part, Metadata};
 
 #[derive(Debug, Default)]
 pub struct Novel {
@@ -23,28 +19,11 @@ pub struct Novel {
 }
 
 impl WriteToEpub for Novel {
-    fn write_to_epub(self, epub: EpubBuilderMut) -> Result<EpubBuilderMut, Box<dyn Error>> {
+    fn write_to_epub(self, epub: EpubBuilderMut) -> Result<EpubBuilderMut, AnyError> {
         debug!("writing metadata.");
 
-        match self.metadata {
-            Some(metadata) if metadata.cover.is_some() => {
-                match get_cover_image(metadata.cover.as_ref().unwrap()) {
-                    Ok(cover) => {
-                        epub.add_cover_image("cover.jpg", &cover[..], "image/jpeg")?;
-                    }
-                    Err(e) => {
-                        warn!("Failed to add cover image. Due to: ");
-                        warn!("{}", e);
-                        warn!("Skip adding cover image.");
-                    }
-                }
-
-                Into::<SerMetaData>::into(metadata).write_to_epub(epub)?;
-            }
-            Some(metadata) => {
-                Into::<SerMetaData>::into(metadata).write_to_epub(epub)?;
-            }
-            None => (),
+        if let Some(metadata) = self.metadata {
+            metadata.write_to_epub(epub)?;
         }
 
         let mut chapter_count = 0;
@@ -154,6 +133,16 @@ impl Novel {
                 break;
             }
 
+            if NovelOptions::is_options_string(&line) {
+                self.patch_options(line.as_str().into())
+            }
+
+            // if line.starts_with("[LongPreface]") {
+            //     if let Some(part) = self.parts.last_mut() {
+            //         part.is_long_preface = true;
+            //     }
+            // }
+
             if let Some(cap) = part_regex.captures(line.trim()) {
                 if let Some(part) = self.parts.last_mut() {
                     part.end = file.stream_position()? - line.as_bytes().len() as u64;
@@ -165,6 +154,7 @@ impl Novel {
                     line.clone(),
                     file.stream_position()?,
                 ));
+
                 self.current_part_no += 1;
             }
 
@@ -209,5 +199,11 @@ impl Novel {
 
         self.parts[0].end = file.seek(std::io::SeekFrom::End(0))?;
         Ok(())
+    }
+
+    fn patch_options(&mut self, options: NovelOptions) {
+        if let Some(part) = self.parts.last_mut() {
+            part.options.entry(options).and_modify(|v| *v = true);
+        }
     }
 }

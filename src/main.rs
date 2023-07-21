@@ -1,11 +1,9 @@
-use std::error::Error;
-
 use clap::Parser;
 use colored::Colorize;
 
-use txt2epub::{cli::CLIOptions, txt2epub};
+use txt2epub::{cli::CLIOptions, error::AnyError, txt2epub};
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), AnyError> {
     let options = CLIOptions::parse();
     txt2epub::log::init();
 

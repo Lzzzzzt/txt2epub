@@ -8,9 +8,12 @@ use regex::Regex;
 use serde::Serialize;
 use tera::Context;
 
-use crate::{WriteToEpub, HAVE_SECTIONS, TEMPLATE_ENGINE};
+use crate::{error::AnyError, WriteToEpub, HAVE_SECTIONS, TEMPLATE_ENGINE};
 
-use super::chapter::Chapter;
+use super::{
+    chapter::Chapter,
+    novel_options::{NovelOptions, NovelOptionsMap},
+};
 
 #[derive(Debug)]
 pub struct Part {
@@ -22,6 +25,7 @@ pub struct Part {
     pub start: u64,
     pub end: u64,
     pub current_chapter_no: usize,
+    pub options: NovelOptionsMap,
 }
 
 impl Part {
@@ -34,6 +38,7 @@ impl Part {
             preface: vec![],
             start,
             end: 0,
+            options: NovelOptions::default_options(),
             current_chapter_no: 1,
         }
     }
@@ -70,7 +75,9 @@ impl Part {
                 break;
             }
 
-            if let Some(cap) = title_regex.captures(line.trim()) {
+            let trimed_line = line.trim();
+
+            if let Some(cap) = title_regex.captures(trimed_line) {
                 // search for the chapter title
                 chapter_start = true;
 
@@ -87,14 +94,19 @@ impl Part {
 
                 *global_chapter_num += 1;
                 self.current_chapter_no += 1;
-            } else if !chapter_start && !line.trim().is_empty() {
+            } else if !chapter_start && !trimed_line.is_empty() {
                 // if current line is not the chapter content, treat it as the part's preface.
-                preface.push(line.trim().to_string());
-            } else if !line.trim().is_empty() {
+                if !NovelOptions::is_options_string(&line) {
+                    preface.push(trimed_line.to_string());
+                }
+                // if !line.starts_with("[LongPreface]") {
+                //     preface.push(trimed_line.to_string());
+                // }
+            } else if !trimed_line.is_empty() {
                 // if current line is the chapter content, push it.
                 self.current_chapter_mut()
                     .content
-                    .push(line.trim().to_string())
+                    .push(trimed_line.to_string())
             }
 
             // quit the loop if read to the chapter end.
@@ -120,8 +132,19 @@ impl Part {
             title,
             preface,
             chapters,
+            options,
             ..
         } = self;
+
+        let mut is_long_preface = false;
+
+        for (k, v) in options {
+            match k {
+                NovelOptions::LongPreface => is_long_preface = v,
+                _ => continue,
+            }
+        }
+
         (
             SerPart {
                 no_string: (no as u64)
@@ -134,6 +157,7 @@ impl Part {
                 no,
                 title,
                 preface,
+                is_long_preface,
             },
             chapters,
         )
@@ -148,13 +172,14 @@ pub struct SerPart {
     pub no_string: String,
     pub title: String,
     pub preface: Vec<String>,
+    pub is_long_preface: bool,
 }
 
 impl WriteToEpub for SerPart {
     fn write_to_epub(
         self,
         epub: &mut EpubBuilder<ZipLibrary>,
-    ) -> Result<&mut EpubBuilder<ZipLibrary>, Box<dyn std::error::Error>> {
+    ) -> Result<&mut EpubBuilder<ZipLibrary>, AnyError> {
         let title = self.title_string();
 
         if unsafe { HAVE_SECTIONS } {

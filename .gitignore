@@ -7,3 +7,6 @@
 /.fleet
 /.vscode
 /.idea
+
+*.epub
+*.txt

@@ -1,7 +1,6 @@
 #![feature(path_file_prefix)]
 
 use std::{
-    error::Error,
     fs::File,
     io::{BufReader, Cursor},
     time::SystemTime,
@@ -11,6 +10,7 @@ use ::log::{debug, info};
 use anyhow::Result;
 use cli::ConvertOpt;
 use epub_builder::{EpubBuilder, ZipLibrary};
+use error::AnyError;
 use image::ImageOutputFormat;
 use lazy_static::lazy_static;
 use tera::Tera;
@@ -47,7 +47,7 @@ lazy_static! {
 pub type EpubBuilderMut<'a> = &'a mut EpubBuilder<ZipLibrary>;
 
 pub trait WriteToEpub {
-    fn write_to_epub(self, epub: EpubBuilderMut) -> Result<EpubBuilderMut, Box<dyn Error>>;
+    fn write_to_epub(self, epub: EpubBuilderMut) -> Result<EpubBuilderMut, AnyError>;
 }
 
 pub fn get_cover_image(url: &str) -> Result<Vec<u8>> {
@@ -59,10 +59,13 @@ pub fn get_cover_image(url: &str) -> Result<Vec<u8>> {
     image::load_from_memory(&response.bytes()?)?
         .write_to(&mut Cursor::new(&mut image), ImageOutputFormat::Jpeg(100))?;
 
+    debug!("successfully fetched cover image.");
+    debug!("size: {:.3}KB", image.len() as f64 / 1024.0);
+
     Ok(image)
 }
 
-pub fn txt2epub(opt: &ConvertOpt) -> Result<(), Box<dyn Error>> {
+pub fn txt2epub(opt: &ConvertOpt) -> Result<(), AnyError> {
     info!("converting {}.", opt.path.display());
 
     let start = SystemTime::now();

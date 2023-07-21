@@ -5,7 +5,7 @@ use log::debug;
 use serde::Serialize;
 use tera::Context;
 
-use crate::{WriteToEpub, HAVE_SECTIONS, TEMPLATE_ENGINE};
+use crate::{error::AnyError, WriteToEpub, HAVE_SECTIONS, TEMPLATE_ENGINE};
 
 #[derive(Debug)]
 pub struct Chapter {
@@ -86,7 +86,7 @@ impl WriteToEpub for SerChapter {
     fn write_to_epub(
         self,
         epub: &mut EpubBuilder<ZipLibrary>,
-    ) -> std::result::Result<&mut EpubBuilder<ZipLibrary>, Box<dyn std::error::Error>> {
+    ) -> std::result::Result<&mut EpubBuilder<ZipLibrary>, AnyError> {
         let title = self.title_string();
 
         debug!("writing chapter: {}", &title);
