@@ -1,11 +1,11 @@
 use anyhow::Result;
 use chinese_number::{ChineseCase, ChineseCountMethod, ChineseVariant, NumberToChinese};
-use epub_builder::{EpubBuilder, EpubContent, ZipLibrary};
+use epub_builder::EpubContent;
 use log::debug;
 use serde::Serialize;
 use tera::Context;
 
-use crate::{error::AnyError, WriteToEpub, HAVE_SECTIONS, TEMPLATE_ENGINE};
+use crate::{cli::ConvertOpt, error::AnyError, EpubBuilderMut, WriteToEpub, TEMPLATE_ENGINE};
 
 #[derive(Debug)]
 pub struct Chapter {
@@ -83,15 +83,16 @@ pub struct SerChapter {
 }
 
 impl WriteToEpub for SerChapter {
-    fn write_to_epub(
+    fn write_to_epub<'a>(
         self,
-        epub: &mut EpubBuilder<ZipLibrary>,
-    ) -> std::result::Result<&mut EpubBuilder<ZipLibrary>, AnyError> {
+        epub: EpubBuilderMut<'a>,
+        options: &mut ConvertOpt,
+    ) -> Result<EpubBuilderMut<'a>, AnyError> {
         let title = self.title_string();
 
         debug!("writing chapter: {}", &title);
 
-        if unsafe { HAVE_SECTIONS } {
+        if options.have_section {
             epub.add_content(
                 EpubContent::new(
                     format!("P{:02}C{:04}.html", self.part_no, self.no),

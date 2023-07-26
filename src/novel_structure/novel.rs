@@ -2,11 +2,10 @@ use std::io::{BufRead, Seek};
 
 use anyhow::Result;
 use log::{debug, info};
-use regex::Regex;
 
 use crate::{
-    error::AnyError, novel_structure::chapter::SerChapter, EpubBuilderMut, WriteToEpub,
-    HAVE_SECTIONS,
+    cli::ConvertOpt, error::AnyError, novel_structure::chapter::SerChapter, EpubBuilderMut,
+    WriteToEpub,
 };
 
 use super::{novel_options::NovelOptions, part::Part, Metadata};
@@ -19,11 +18,15 @@ pub struct Novel {
 }
 
 impl WriteToEpub for Novel {
-    fn write_to_epub(self, epub: EpubBuilderMut) -> Result<EpubBuilderMut, AnyError> {
+    fn write_to_epub<'a>(
+        self,
+        epub: EpubBuilderMut<'a>,
+        options: &mut ConvertOpt,
+    ) -> Result<EpubBuilderMut<'a>, AnyError> {
         debug!("writing metadata.");
 
         if let Some(metadata) = self.metadata {
-            metadata.write_to_epub(epub)?;
+            metadata.write_to_epub(epub, options)?;
         }
 
         let mut chapter_count = 0;
@@ -31,10 +34,10 @@ impl WriteToEpub for Novel {
         for part in self.parts {
             let (part, content) = part.into_serialized();
             debug!("writing part: {}", &part.title_string());
-            part.write_to_epub(epub)?;
+            part.write_to_epub(epub, options)?;
 
             for c in content {
-                Into::<SerChapter>::into(c).write_to_epub(epub)?;
+                Into::<SerChapter>::into(c).write_to_epub(epub, options)?;
                 chapter_count += 1;
             }
         }
@@ -54,7 +57,7 @@ impl Novel {
         }
     }
 
-    pub(crate) fn scan_metadata<F>(&mut self, file: &mut F) -> Result<()>
+    pub(crate) fn scan_metadata<F>(&mut self, file: &mut F, options: &ConvertOpt) -> Result<()>
     where
         F: BufRead + Seek,
     {
@@ -64,10 +67,11 @@ impl Novel {
 
         let mut line = String::new();
         let mut metadata_string = String::new();
-        let part_regex = Regex::new(r"^第.+[部|卷|章] (.*)$")?;
+        let part_regex = &options.part_regex;
+        let chapter_regex = &options.chapter_regex;
 
         while let Ok(len) = file.read_line(&mut line) {
-            if len == 0 || part_regex.captures(line.trim()).is_some() {
+            if len == 0 || part_regex.is_match(line.trim()) || chapter_regex.is_match(line.trim()) {
                 break;
             }
 
@@ -83,13 +87,13 @@ impl Novel {
         Ok(())
     }
 
-    pub(crate) fn scan_parts<F>(&mut self, file: &mut F) -> Result<()>
+    pub(crate) fn scan_parts<F>(&mut self, file: &mut F, options: &mut ConvertOpt) -> Result<()>
     where
         F: BufRead + Seek,
     {
         debug!("scanning novel parts.");
 
-        self.check_part_range(file)?;
+        self.check_part_range(file, options)?;
 
         debug!("found {} parts", self.parts.len());
         debug!(
@@ -103,8 +107,8 @@ impl Novel {
         if self.parts.is_empty() {
             info!("No part has been found.");
             info!("Treat whole novel as a part.");
-            unsafe { HAVE_SECTIONS = false };
-            self.make_whole_chapter_as_a_part(file)?;
+            options.have_section = false;
+            self.make_whole_chapter_as_a_part(file, options)?;
         }
 
         file.rewind()?;
@@ -112,13 +116,13 @@ impl Novel {
         let mut global_chapter_number = 0;
 
         for part in self.parts.iter_mut() {
-            part.scan_chapters(file, &mut global_chapter_number)?;
+            part.scan_chapters(file, &mut global_chapter_number, options)?;
         }
 
         Ok(())
     }
 
-    fn check_part_range<F>(&mut self, file: &mut F) -> Result<()>
+    fn check_part_range<F>(&mut self, file: &mut F, options: &mut ConvertOpt) -> Result<()>
     where
         F: BufRead + Seek,
     {
@@ -126,7 +130,9 @@ impl Novel {
 
         let mut line = String::new();
 
-        let part_regex = Regex::new(r"^第.+[部|卷] (.*)$")?;
+        // let part_regex = Regex::new(r"^第.+[部|卷] (.*)$")?;
+        // let part_regex = Regex::new(&options.part_regex)?;
+        let part_regex = &options.part_regex;
 
         while let Ok(len) = file.read_line(&mut line) {
             if len == 0 {
@@ -168,7 +174,7 @@ impl Novel {
         Ok(())
     }
 
-    fn make_whole_chapter_as_a_part<F>(&mut self, file: &mut F) -> Result<()>
+    fn make_whole_chapter_as_a_part<F>(&mut self, file: &mut F, options: &ConvertOpt) -> Result<()>
     where
         F: Seek + BufRead,
     {
@@ -176,7 +182,8 @@ impl Novel {
 
         let mut line = String::new();
 
-        let chapter_regex = Regex::new(r"^第.+[章] (.*)$")?;
+        // let chapter_regex = Regex::new(&options.chapter_regex)?;
+        let chapter_regex = &options.chapter_regex;
 
         while let Ok(len) = file.read_line(&mut line) {
             if len == 0 {

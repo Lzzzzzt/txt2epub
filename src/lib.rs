@@ -29,7 +29,6 @@ static NOVEL_CHAPTER_TEMPLATE: &str = include_str!("templates/chapter.html");
 static NOVEL_INTRO_TEMPLATE: &str = include_str!("templates/intro.html");
 
 pub static NOVEL_CSS: &str = include_str!("templates/stylesheet.css");
-pub static mut HAVE_SECTIONS: bool = true;
 
 lazy_static! {
     pub static ref TEMPLATE_ENGINE: Tera = {
@@ -47,7 +46,11 @@ lazy_static! {
 pub type EpubBuilderMut<'a> = &'a mut EpubBuilder<ZipLibrary>;
 
 pub trait WriteToEpub {
-    fn write_to_epub(self, epub: EpubBuilderMut) -> Result<EpubBuilderMut, AnyError>;
+    fn write_to_epub<'a>(
+        self,
+        epub: EpubBuilderMut<'a>,
+        options: &mut ConvertOpt,
+    ) -> Result<EpubBuilderMut<'a>, AnyError>;
 }
 
 pub fn get_cover_image(url: &str) -> Result<Vec<u8>> {
@@ -65,13 +68,13 @@ pub fn get_cover_image(url: &str) -> Result<Vec<u8>> {
     Ok(image)
 }
 
-pub fn txt2epub(opt: &ConvertOpt) -> Result<(), AnyError> {
+pub fn txt2epub(opt: &mut ConvertOpt) -> Result<(), AnyError> {
     info!("converting {}.", opt.path.display());
 
     let start = SystemTime::now();
 
-    parse_txt(&mut BufReader::new(File::open(&opt.path)?))?
-        .write_to_epub(&mut EpubFactory::with_default_css()?.into())?
+    parse_txt(&mut BufReader::new(File::open(&opt.path)?), opt)?
+        .write_to_epub(&mut EpubFactory::with_default_css()?.into(), opt)?
         .generate(File::create(&opt.out_file)?)?;
 
     info!("saving file to {}", opt.out_file.display());

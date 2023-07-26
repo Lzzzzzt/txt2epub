@@ -2,13 +2,12 @@ use std::io::{BufRead, Seek, SeekFrom};
 
 use anyhow::Result;
 use chinese_number::{ChineseCase, ChineseCountMethod, ChineseVariant, NumberToChinese};
-use epub_builder::{EpubBuilder, EpubContent, ZipLibrary};
+use epub_builder::EpubContent;
 use log::debug;
-use regex::Regex;
 use serde::Serialize;
 use tera::Context;
 
-use crate::{error::AnyError, WriteToEpub, HAVE_SECTIONS, TEMPLATE_ENGINE};
+use crate::{cli::ConvertOpt, error::AnyError, EpubBuilderMut, WriteToEpub, TEMPLATE_ENGINE};
 
 use super::{
     chapter::Chapter,
@@ -53,13 +52,19 @@ impl Part {
         &mut self.chapters[self.current_chapter_no - 1 - 1]
     }
 
-    pub fn scan_chapters<F>(&mut self, file: &mut F, global_chapter_num: &mut usize) -> Result<()>
+    pub fn scan_chapters<F>(
+        &mut self,
+        file: &mut F,
+        global_chapter_num: &mut usize,
+        options: &ConvertOpt,
+    ) -> Result<()>
     where
         F: BufRead + Seek,
     {
-        let title_regex = Regex::new(r"^第.*章 (.*)$")?;
+        // let title_regex = Regex::new(&options.chapter_regex)?;
+        let title_regex = &options.chapter_regex;
 
-        if unsafe { HAVE_SECTIONS } {
+        if options.have_section {
             debug!("scanning novel chapter of part: {}.", self.title);
         }
 
@@ -176,13 +181,14 @@ pub struct SerPart {
 }
 
 impl WriteToEpub for SerPart {
-    fn write_to_epub(
+    fn write_to_epub<'a>(
         self,
-        epub: &mut EpubBuilder<ZipLibrary>,
-    ) -> Result<&mut EpubBuilder<ZipLibrary>, AnyError> {
+        epub: EpubBuilderMut<'a>,
+        options: &mut ConvertOpt,
+    ) -> Result<EpubBuilderMut<'a>, AnyError> {
         let title = self.title_string();
 
-        if unsafe { HAVE_SECTIONS } {
+        if options.have_section {
             epub.add_content(
                 EpubContent::new(
                     format!("P{:02}.html", self.no),

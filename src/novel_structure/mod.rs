@@ -4,7 +4,9 @@ use log::warn;
 use serde::{Deserialize, Serialize};
 use tera::Context;
 
-use crate::{error::AnyError, get_cover_image, EpubBuilderMut, WriteToEpub, TEMPLATE_ENGINE};
+use crate::{
+    cli::ConvertOpt, error::AnyError, get_cover_image, EpubBuilderMut, WriteToEpub, TEMPLATE_ENGINE,
+};
 
 pub mod chapter;
 pub mod novel;
@@ -28,7 +30,11 @@ pub struct Metadata {
 }
 
 impl WriteToEpub for Metadata {
-    fn write_to_epub(self, epub: EpubBuilderMut) -> anyhow::Result<EpubBuilderMut, AnyError> {
+    fn write_to_epub<'a>(
+        self,
+        epub: EpubBuilderMut<'a>,
+        options: &mut ConvertOpt,
+    ) -> Result<EpubBuilderMut<'a>, AnyError> {
         if self.cover.is_some() {
             match get_cover_image(self.cover.as_ref().unwrap()) {
                 Ok(cover) => {
@@ -42,7 +48,7 @@ impl WriteToEpub for Metadata {
             }
         }
 
-        Into::<SerMetaData>::into(self).write_to_epub(epub)?;
+        Into::<SerMetaData>::into(self).write_to_epub(epub, options)?;
 
         Ok(epub)
     }
@@ -80,7 +86,11 @@ impl SerMetaData {
 }
 
 impl WriteToEpub for SerMetaData {
-    fn write_to_epub(self, epub: EpubBuilderMut) -> anyhow::Result<EpubBuilderMut, AnyError> {
+    fn write_to_epub<'a>(
+        self,
+        epub: EpubBuilderMut<'a>,
+        _: &mut ConvertOpt,
+    ) -> Result<EpubBuilderMut<'a>, AnyError> {
         epub.metadata("author", &self.author)?
             .metadata("title", &self.book_name)?
             .metadata("lang", "zh-CN")?
