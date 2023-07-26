@@ -41,6 +41,8 @@ use yaml to parse
 ^第.+[部|卷] (.*)$
 ```
 
+> or custom regex
+
 For default, txt2epub will treat the content between the line which match the regex and the chapter regex as the preface of the part. It will be centered. If you don't want to center the preface, you can add `[LongPreface]` in the line after the part title line.
 
 Also, if your file doesn't have any part, txt2epub will treat whole chapter as a part which will not show the part page.
@@ -50,3 +52,5 @@ Also, if your file doesn't have any part, txt2epub will treat whole chapter as a
 ```regex
 ^第.+[章] (.*)$
 ```
+
+> or custom regex
