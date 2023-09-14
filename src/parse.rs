@@ -3,9 +3,9 @@ use std::io::{BufRead, Seek};
 use anyhow::Result;
 use log::debug;
 
-use crate::{novel_structure::novel::Novel, WriteToEpub, cli::ConvertOpt};
+use crate::{cli::ConvertOpt, novel_structure::novel::Novel, WriteToEpub};
 
-pub fn parse_txt<F>(file: &mut F, options: &mut ConvertOpt) -> Result<impl WriteToEpub>
+pub(crate) fn parse_txt<F>(file: &mut F, options: &mut ConvertOpt) -> Result<impl WriteToEpub>
 where
     F: BufRead + Seek,
 {

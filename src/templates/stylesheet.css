@@ -1,18 +1,18 @@
-h2 {
+.title {
     text-indent: 0;
     text-align: center;
     line-height: 100%;
-    font-size: 2.25em;
-    font-weight: bold;
-}
-h3 {
-    text-indent: 0;
-    text-align: center;
-    line-height: 125%;
     font-size: 1.5em;
     font-weight: bold;
 }
-p {
+.no, .author {
+    text-indent: 0;
+    text-align: center;
+    line-height: 125%;
+    font-size: 1em;
+    font-weight: bold;
+}
+.content, .intro {
     text-indent: 2em;
     margin: 0;
     line-height: 150%;
@@ -27,4 +27,7 @@ p {
     line-height: 100%;
     font-size: 2.5em;
     font-weight: bold;
+}
+.divider {
+    margin-bottom: 3em;
 }

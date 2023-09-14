@@ -3,10 +3,7 @@ use std::io::{BufRead, Seek};
 use anyhow::Result;
 use log::{debug, info};
 
-use crate::{
-    cli::ConvertOpt, error::AnyError, novel_structure::chapter::SerChapter, EpubBuilderMut,
-    WriteToEpub,
-};
+use crate::{cli::ConvertOpt, error::AnyError, EpubBuilderMut, WriteToEpub};
 
 use super::{novel_options::NovelOptions, part::Part, Metadata};
 
@@ -29,20 +26,9 @@ impl WriteToEpub for Novel {
             metadata.write_to_epub(epub, options)?;
         }
 
-        let mut chapter_count = 0;
-
         for part in self.parts {
-            let (part, content) = part.into_serialized();
-            debug!("writing part: {}", &part.title_string());
-            part.write_to_epub(epub, options)?;
-
-            for c in content {
-                Into::<SerChapter>::into(c).write_to_epub(epub, options)?;
-                chapter_count += 1;
-            }
+            part.write_to_epub(epub, options).map(|_| ())?;
         }
-
-        debug!("total {} chapters.", chapter_count);
 
         Ok(epub)
     }
@@ -97,11 +83,8 @@ impl Novel {
 
         debug!("found {} parts", self.parts.len());
         debug!(
-            "{:#?}",
-            self.parts
-                .iter()
-                .map(|p| p.title.clone())
-                .collect::<Vec<_>>()
+            "{:?}",
+            self.parts.iter().map(|p| &p.title).collect::<Vec<&_>>()
         );
 
         if self.parts.is_empty() {
@@ -119,10 +102,12 @@ impl Novel {
             part.scan_chapters(file, &mut global_chapter_number, options)?;
         }
 
+        debug!("found {} chapters", global_chapter_number);
+
         Ok(())
     }
 
-    fn check_part_range<F>(&mut self, file: &mut F, options: &mut ConvertOpt) -> Result<()>
+    fn check_part_range<F>(&mut self, file: &mut F, options: &ConvertOpt) -> Result<()>
     where
         F: BufRead + Seek,
     {
@@ -130,8 +115,6 @@ impl Novel {
 
         let mut line = String::new();
 
-        // let part_regex = Regex::new(r"^第.+[部|卷] (.*)$")?;
-        // let part_regex = Regex::new(&options.part_regex)?;
         let part_regex = &options.part_regex;
 
         while let Ok(len) = file.read_line(&mut line) {
@@ -143,12 +126,6 @@ impl Novel {
                 self.patch_options(line.as_str().into())
             }
 
-            // if line.starts_with("[LongPreface]") {
-            //     if let Some(part) = self.parts.last_mut() {
-            //         part.is_long_preface = true;
-            //     }
-            // }
-
             if let Some(cap) = part_regex.captures(line.trim()) {
                 if let Some(part) = self.parts.last_mut() {
                     part.end = file.stream_position()? - line.as_bytes().len() as u64;
@@ -157,11 +134,13 @@ impl Novel {
                 self.parts.push(Part::new(
                     self.current_part_no,
                     cap[1].to_string(),
-                    line.clone(),
+                    std::mem::take(&mut line),
                     file.stream_position()?,
                 ));
 
                 self.current_part_no += 1;
+
+                continue;
             }
 
             line.clear();

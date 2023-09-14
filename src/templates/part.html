@@ -1,26 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<html
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:epub="http://www.idpf.org/2007/ops"
+>
   <head>
-    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ title }}</title>
-    <link rel="stylesheet" type="text/css" href="./stylesheet.css" />
+    <link rel="stylesheet" type="text/css" href="../stylesheet.css" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   </head>
   <body>
-    <div>
-      <h3>第{{ no }}卷</h3>
-      <h2>{{ title }}</h2>
-      <br />
-      <div>
-        {%- for line in preface %} 
-          {%- if is_long_preface %}
-            <p>{{ line }}</p>
-          {%- else %}
-            <p class="preface">{{ line }}</p>
-          {%- endif %} 
-        {%- endfor %}
-      </div>
-    </div>
+    <h3 class="no">第{{ no | to_chinese_string }}卷</h3>
+    <h2 class="title">{{ title }}</h2>
+    <br />
+    <br />
+    {%- for line in preface %} {%- if is_long_preface %}
+    <p class="content">{{ line }}</p>
+    {%- else %}
+    <p class="preface">{{ line }}</p>
+    {%- endif %} {%- endfor %}
   </body>
 </html>

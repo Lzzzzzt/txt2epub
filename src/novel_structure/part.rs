@@ -27,6 +27,25 @@ pub struct Part {
     pub options: NovelOptionsMap,
 }
 
+impl WriteToEpub for Part {
+    fn write_to_epub<'a>(
+        self,
+        epub: EpubBuilderMut<'a>,
+        options: &mut ConvertOpt,
+    ) -> Result<EpubBuilderMut<'a>, AnyError> {
+        let (part, content) = self.into_serialized();
+
+        debug!("writing part: {}", &part.title_string());
+        part.write_to_epub(epub, options)?;
+
+        for c in content {
+            c.write_to_epub(epub, options)?;
+        }
+
+        Ok(epub)
+    }
+}
+
 impl Part {
     pub fn new(no: usize, title: String, raw_title: String, start: u64) -> Self {
         Self {
@@ -152,13 +171,6 @@ impl Part {
 
         (
             SerPart {
-                no_string: (no as u64)
-                    .to_chinese(
-                        ChineseVariant::Simple,
-                        ChineseCase::Lower,
-                        ChineseCountMethod::TenThousand,
-                    )
-                    .unwrap(),
                 no,
                 title,
                 preface,
@@ -171,10 +183,7 @@ impl Part {
 
 #[derive(Serialize)]
 pub struct SerPart {
-    #[serde(skip)]
     pub no: usize,
-    #[serde(rename = "no")]
-    pub no_string: String,
     pub title: String,
     pub preface: Vec<String>,
     pub is_long_preface: bool,
@@ -191,7 +200,7 @@ impl WriteToEpub for SerPart {
         if options.have_section {
             epub.add_content(
                 EpubContent::new(
-                    format!("P{:02}.html", self.no),
+                    format!("{:02}/intro.xhtml", self.no),
                     self.into_html_string()?.as_bytes(),
                 )
                 .title(title),
@@ -208,6 +217,16 @@ impl SerPart {
     }
 
     pub fn title_string(&self) -> String {
-        format!("第{}卷 {}", self.no_string, self.title)
+        format!(
+            "第{}卷 {}",
+            (self.no as u128)
+                .to_chinese(
+                    ChineseVariant::Simple,
+                    ChineseCase::Lower,
+                    ChineseCountMethod::TenThousand,
+                )
+                .unwrap(),
+            self.title
+        )
     }
 }

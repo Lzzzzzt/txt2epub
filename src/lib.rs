@@ -1,4 +1,5 @@
 #![feature(path_file_prefix)]
+#![feature(async_fn_in_trait)]
 
 use std::{
     fs::File,
@@ -7,13 +8,15 @@ use std::{
 };
 
 use ::log::{debug, info};
-use anyhow::Result;
+use colored::Colorize;
+
+use chinese_number::{ChineseCase, ChineseCountMethod, ChineseVariant, NumberToChinese};
 use cli::ConvertOpt;
 use epub_builder::{EpubBuilder, ZipLibrary};
 use error::AnyError;
 use image::ImageOutputFormat;
 use lazy_static::lazy_static;
-use tera::Tera;
+use tera::{Tera, Value};
 
 use crate::{epub::EpubFactory, parse::parse_txt};
 
@@ -39,13 +42,27 @@ lazy_static! {
         tera.add_raw_template("intro", NOVEL_INTRO_TEMPLATE)
             .unwrap();
 
+        tera.register_filter("to_chinese_string", |value: &Value, _: &_| {
+            if let Some(no) = value.as_u64() {
+                return Ok(Value::String(
+                    no.to_chinese(
+                        ChineseVariant::Simple,
+                        ChineseCase::Lower,
+                        ChineseCountMethod::TenThousand,
+                    )
+                    .unwrap(),
+                ));
+            }
+
+            Ok(value.clone())
+        });
         tera
     };
 }
 
 pub type EpubBuilderMut<'a> = &'a mut EpubBuilder<ZipLibrary>;
 
-pub trait WriteToEpub {
+pub(crate) trait WriteToEpub {
     fn write_to_epub<'a>(
         self,
         epub: EpubBuilderMut<'a>,
@@ -53,7 +70,7 @@ pub trait WriteToEpub {
     ) -> Result<EpubBuilderMut<'a>, AnyError>;
 }
 
-pub fn get_cover_image(url: &str) -> Result<Vec<u8>> {
+pub(crate) fn get_cover_image(url: &str) -> Result<Vec<u8>, AnyError> {
     debug!("fetching cover image.");
 
     let response = reqwest::blocking::get(url)?;
@@ -68,13 +85,22 @@ pub fn get_cover_image(url: &str) -> Result<Vec<u8>> {
     Ok(image)
 }
 
-pub fn txt2epub(opt: &mut ConvertOpt) -> Result<(), AnyError> {
+pub fn txt2epub(mut opt: ConvertOpt) {
+    if let Err(err) = txt2epub_inner(&mut opt) {
+        ::log::error!("Failed to convert {}. Due to: ", opt.path.display());
+        ::log::error!("{}\n", err.to_string().on_red());
+    }
+}
+
+fn txt2epub_inner(opt: &mut ConvertOpt) -> Result<(), AnyError> {
     info!("converting {}.", opt.path.display());
 
     let start = SystemTime::now();
 
+    let mut epub = EpubFactory::with_default_css()?.into();
+
     parse_txt(&mut BufReader::new(File::open(&opt.path)?), opt)?
-        .write_to_epub(&mut EpubFactory::with_default_css()?.into(), opt)?
+        .write_to_epub(&mut epub, opt)?
         .generate(File::create(&opt.out_file)?)?;
 
     info!("saving file to {}", opt.out_file.display());

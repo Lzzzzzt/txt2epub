@@ -16,6 +16,7 @@ impl EpubFactory {
     pub fn with_default_css() -> Result<Self, AnyError> {
         let mut epub = EpubBuilder::new(ZipLibrary::new()?)?;
         epub.stylesheet(NOVEL_CSS.as_bytes())?;
+        epub.epub_version(epub_builder::EpubVersion::V30);
         Ok(Self { builder: epub })
     }
 

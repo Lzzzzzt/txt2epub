@@ -1,24 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<html
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:epub="http://www.idpf.org/2007/ops"
+>
   <head>
-    <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ title }}</title>
-    <link rel="stylesheet" type="text/css" href="./stylesheet.css" />
+    <link rel="stylesheet" type="text/css" href="../stylesheet.css" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   </head>
   <body>
-    <div>
-      <h3>第{{ no }}章</h3>
-      <h2>{{ title }}</h2>
-      <br />
-      <br />
-      <br />
-      <div>
-        {%- for line in content %}
-        <p>{{ line }}</p>
-        {%- endfor %}
-      </div>
-    </div>
+    <h3 class="no">
+      第{{ part_no | to_chinese_string }}卷 第{{ no | to_chinese_string }}章
+    </h3>
+    <h2 class="title">{{ title }}</h2>
+    <div class="divider"></div>
+    {%- for line in content %}
+    <p class="content">{{ line }}</p>
+    {%- endfor %}
   </body>
 </html>

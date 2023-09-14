@@ -1,4 +1,3 @@
-use anyhow::Result;
 use chinese_number::{ChineseCase, ChineseCountMethod, ChineseVariant, NumberToChinese};
 use epub_builder::EpubContent;
 use log::debug;
@@ -19,6 +18,16 @@ pub struct Chapter {
     pub end: u64,
 }
 
+impl WriteToEpub for Chapter {
+    fn write_to_epub<'a>(
+        self,
+        epub: EpubBuilderMut<'a>,
+        options: &mut ConvertOpt,
+    ) -> Result<EpubBuilderMut<'a>, AnyError> {
+        Into::<SerChapter>::into(self).write_to_epub(epub, options)
+    }
+}
+
 impl From<Chapter> for SerChapter {
     fn from(value: Chapter) -> Self {
         let Chapter {
@@ -33,13 +42,6 @@ impl From<Chapter> for SerChapter {
         Self {
             global_title: format!("第{}章 {}", id, title),
             part_no,
-            no_string: (value.no as u128)
-                .to_chinese(
-                    ChineseVariant::Simple,
-                    ChineseCase::Lower,
-                    ChineseCountMethod::TenThousand,
-                )
-                .unwrap(),
             no,
             title,
             content,
@@ -72,11 +74,7 @@ impl Chapter {
 #[derive(Serialize)]
 pub struct SerChapter {
     pub global_title: String,
-    #[serde(skip)]
     pub no: usize,
-    #[serde(rename = "no")]
-    pub no_string: String,
-    #[serde(skip)]
     pub part_no: usize,
     pub title: String,
     pub content: Vec<String>,
@@ -95,7 +93,7 @@ impl WriteToEpub for SerChapter {
         if options.have_section {
             epub.add_content(
                 EpubContent::new(
-                    format!("P{:02}C{:04}.html", self.part_no, self.no),
+                    format!("{:02}/{:04}.xhtml", self.part_no, self.no),
                     self.into_html_string()?.as_bytes(),
                 )
                 .title(title)
@@ -104,7 +102,7 @@ impl WriteToEpub for SerChapter {
         } else {
             epub.add_content(
                 EpubContent::new(
-                    format!("C{:04}.html", self.no),
+                    format!("00/{:04}.xhtml", self.no),
                     self.into_html_string()?.as_bytes(),
                 )
                 .title(title),
@@ -116,11 +114,21 @@ impl WriteToEpub for SerChapter {
 }
 
 impl SerChapter {
-    pub fn into_html_string(self) -> Result<String> {
+    pub fn into_html_string(self) -> Result<String, AnyError> {
         Ok(TEMPLATE_ENGINE.render("chapter", &Context::from_serialize(self)?)?)
     }
 
     pub fn title_string(&self) -> String {
-        format!("第{}章 {}", self.no_string, self.title)
+        format!(
+            "第{}章 {}",
+            (self.no as u128)
+                .to_chinese(
+                    ChineseVariant::Simple,
+                    ChineseCase::Lower,
+                    ChineseCountMethod::TenThousand,
+                )
+                .unwrap(),
+            self.title
+        )
     }
 }
