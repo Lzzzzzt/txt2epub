@@ -2,9 +2,9 @@ use clap::Parser;
 use rayon::prelude::*;
 use std::time::SystemTime;
 
-use txt2epub::{cli::CLIOptions, txt2epub};
+use txt2epub::{cli::CLIOptions, error::AnyError, txt2epub};
 
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<(), AnyError> {
     let options = CLIOptions::parse().check();
     txt2epub::log::init();
 

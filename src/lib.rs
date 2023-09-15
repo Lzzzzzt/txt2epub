@@ -93,7 +93,7 @@ pub fn txt2epub(mut opt: ConvertOpt) {
 }
 
 fn txt2epub_inner(opt: &mut ConvertOpt) -> Result<(), AnyError> {
-    info!("converting {}.", opt.path.display());
+    info!("converting `{}`.", opt.path.display());
 
     let start = SystemTime::now();
 

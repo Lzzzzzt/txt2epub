@@ -9,12 +9,15 @@ pub struct CLIOptions {
     #[clap(index = 1)]
     /// The Files those need to be convert into epub
     pub files: Vec<String>,
+
     #[clap(short, long)]
     /// Output directory
     pub out_dir: Option<PathBuf>,
+
     #[clap(value_parser = parse_regex, short, long)]
     /// The regex to match part title, at least one capture group needed.
     pub part_regex: Option<Regex>,
+
     #[clap(value_parser = parse_regex, short, long)]
     /// The regex to match chapter title, at least one capture group needed.
     pub chapter_regex: Option<Regex>,
@@ -24,7 +27,6 @@ impl CLIOptions {
     pub fn check(self) -> Self {
         if self.files.is_empty() {
             eprintln!("should provide one file at least.");
-            eprintln!("detailed usage show in `txt2epub -h/--help`");
             std::process::exit(0);
         }
 
