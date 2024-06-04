@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<html
-  xmlns="http://www.w3.org/1999/xhtml"
-  xmlns:epub="http://www.idpf.org/2007/ops"
->
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ title }}</title>
@@ -11,12 +8,20 @@
   </head>
   <body>
     <h3 class="no">
-      第{{ part_no | to_chinese_string }}卷 第{{ no | to_chinese_string }}章
+      {%- if part_no != 0 %} 
+      卷{{ part_no | to_tradition_chinese_string }} · {{ no | to_chinese_string }}
+      {%- else %}
+      第{{ no | to_chinese_string }}章
+      {%- endif %}
     </h3>
     <h2 class="title">{{ title }}</h2>
-    <div class="divider"></div>
+    <div class="chapter-divider"><h1></h1></div>
     {%- for line in content %}
-    <p class="content">{{ line }}</p>
+      {%- if line.line_type == "Line" %}
+    <p class="content">{{ line.content }}</p>
+      {%- elif line.line_type == "Divider" %}
+    <p class="content-divider">{{ line.content }}</p>
+      {%- endif %}
     {%- endfor %}
   </body>
 </html>

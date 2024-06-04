@@ -10,9 +10,6 @@ anyhow = "1.0.71"
 chinese-number = "0.7.2"
 clap = { version = "4.3.10", features = ["derive"] }
 colored = "2.0.4"
-epub-builder = { git = "https://github.com/lise-henry/epub-builder.git", default-features = false, features = [
-    "zip-library",
-] }
 glob = "0.3.1"
 image = { version = "0.24.6" }
 lazy_static = "1.4.0"
@@ -20,7 +17,16 @@ log = "0.4.19"
 pretty_env_logger = "0.5.0"
 rayon = "1.7.0"
 regex = "1.8.4"
-reqwest = { version = "0.11.18", features = ["blocking"] }
+reqwest = { version = "0.12.4", features = ["blocking"] }
 serde = { version = "1.0.164", features = ["derive"] }
 serde_yaml = "0.9.22"
 tera = "1.19.0"
+autocorrect = "2.9.0"
+
+[dependencies.epub-builder]
+git = "https://github.com/lise-henry/epub-builder.git"
+default-features = false
+features = ["zip-library"]
+
+[dev-dependencies]
+serde_json = "1.0.117"

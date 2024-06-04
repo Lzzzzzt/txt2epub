@@ -1,5 +1,4 @@
 #![feature(path_file_prefix)]
-#![feature(async_fn_in_trait)]
 
 use std::{
     fs::File,
@@ -8,15 +7,16 @@ use std::{
 };
 
 use ::log::{debug, info};
-use colored::Colorize;
-
 use chinese_number::{ChineseCase, ChineseCountMethod, ChineseVariant, NumberToChinese};
-use cli::ConvertOpt;
+use colored::Colorize;
 use epub_builder::{EpubBuilder, ZipLibrary};
-use error::AnyError;
 use image::ImageOutputFormat;
 use lazy_static::lazy_static;
+use novel_structure::chapter::Line;
 use tera::{Tera, Value};
+
+use cli::ConvertOpt;
+use error::AnyError;
 
 use crate::{epub::EpubFactory, parse::parse_txt};
 
@@ -56,6 +56,22 @@ lazy_static! {
 
             Ok(value.clone())
         });
+
+        tera.register_filter("to_tradition_chinese_string", |value: &Value, _: &_| {
+            if let Some(no) = value.as_u64() {
+                return Ok(Value::String(
+                    no.to_chinese(
+                        ChineseVariant::Traditional,
+                        ChineseCase::Lower,
+                        ChineseCountMethod::TenThousand,
+                    )
+                    .unwrap(),
+                ));
+            }
+
+            Ok(value.clone())
+        });
+
         tera
     };
 }
@@ -108,4 +124,36 @@ fn txt2epub_inner(opt: &mut ConvertOpt) -> Result<(), AnyError> {
     info!("cost {}s.\n", start.elapsed()?.as_secs_f32());
 
     Ok(())
+}
+
+pub(crate) fn quote_replace(s: &mut String) {
+    lazy_static! {
+        static ref QUOTE_REGEX: regex::Regex = regex::Regex::new(r#"(“|”|‘|’)"#).unwrap();
+    }
+
+    *s = QUOTE_REGEX
+        .replace_all(s, |cap: &regex::Captures| match &cap[0] {
+            "“" => "「",
+            "”" => "」",
+            "‘" => "『",
+            "’" => "』",
+            _ => unreachable!(),
+        })
+        .to_string()
+}
+
+pub(crate) fn line_quote_replace(s: &mut Line) {
+    lazy_static! {
+        static ref QUOTE_REGEX: regex::Regex = regex::Regex::new(r#"(“|”|‘|’)"#).unwrap();
+    }
+
+    s.content = QUOTE_REGEX
+        .replace_all(&s.content, |cap: &regex::Captures| match &cap[0] {
+            "“" => "「",
+            "”" => "」",
+            "‘" => "『",
+            "’" => "』",
+            _ => unreachable!(),
+        })
+        .to_string()
 }

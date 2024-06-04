@@ -5,12 +5,12 @@ use serde::{Deserialize, Serialize};
 use tera::Context;
 
 use crate::{
-    cli::ConvertOpt, error::AnyError, get_cover_image, EpubBuilderMut, WriteToEpub, TEMPLATE_ENGINE,
+    cli::ConvertOpt, error::AnyError, get_cover_image, quote_replace, EpubBuilderMut, WriteToEpub,
+    TEMPLATE_ENGINE,
 };
 
 pub mod chapter;
 pub mod novel;
-pub mod novel_options;
 pub mod part;
 
 #[derive(Deserialize, Debug, Default)]
@@ -80,17 +80,24 @@ pub struct SerMetaData {
 }
 
 impl SerMetaData {
-    pub fn into_html_string(self) -> anyhow::Result<String> {
+    pub fn into_html_string(mut self, opt: &ConvertOpt) -> anyhow::Result<String> {
+        if opt.replace_quote {
+            self.description.iter_mut().for_each(quote_replace);
+        }
         Ok(TEMPLATE_ENGINE.render("intro", &Context::from_serialize(self)?)?)
     }
 }
 
 impl WriteToEpub for SerMetaData {
     fn write_to_epub<'a>(
-        self,
+        mut self,
         epub: EpubBuilderMut<'a>,
-        _: &mut ConvertOpt,
+        opt: &mut ConvertOpt,
     ) -> Result<EpubBuilderMut<'a>, AnyError> {
+        if opt.replace_quote {
+            self.description.iter_mut().for_each(quote_replace);
+        }
+
         epub.metadata("author", &self.author)?
             .metadata("title", &self.book_name)?
             .metadata("lang", "zh-CN")?
@@ -98,7 +105,7 @@ impl WriteToEpub for SerMetaData {
             .metadata("description", self.description.join("\n"))?;
 
         epub.add_content(
-            EpubContent::new("intro.html", self.into_html_string()?.as_bytes()).title("简介"),
+            EpubContent::new("intro.html", self.into_html_string(opt)?.as_bytes()).title("简介"),
         )?;
 
         Ok(epub)

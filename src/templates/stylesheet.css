@@ -8,8 +8,8 @@
 .no, .author {
     text-indent: 0;
     text-align: center;
-    line-height: 125%;
-    font-size: 1em;
+    line-height: 100%;
+    font-size: 0.8em;
     font-weight: bold;
 }
 .content, .intro {
@@ -17,7 +17,7 @@
     margin: 0;
     line-height: 150%;
 }
-.preface {
+.preface, .content-divider {
     text-align: center;
     text-indent: 0;
 }
@@ -28,6 +28,6 @@
     font-size: 2.5em;
     font-weight: bold;
 }
-.divider {
+.chapter-divider {
     margin-bottom: 3em;
 }

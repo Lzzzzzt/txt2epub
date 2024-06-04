@@ -21,13 +21,25 @@ pub struct CLIOptions {
     #[clap(value_parser = parse_regex, short, long)]
     /// The regex to match chapter title, at least one capture group needed.
     pub chapter_regex: Option<Regex>,
+
+    #[clap(long)]
+    /// global replace “ -> 「, ” -> 」, ‘ -> 『, ’ -> 』.
+    pub replace_quote: bool,
+
+    #[clap(long)]
+    /// if the novel's preface is too long, then enable this
+    pub long_preface: bool,
+
+    #[clap(long)]
+    /// the string that treated to be a divider.
+    pub divider: Vec<String>,
 }
 
 impl CLIOptions {
     pub fn check(self) -> Self {
         if self.files.is_empty() {
             eprintln!("should provide one file at least.");
-            std::process::exit(0);
+            std::process::exit(1);
         }
 
         self
@@ -51,6 +63,9 @@ impl From<CLIOptions> for Vec<ConvertOpt> {
             out_dir,
             part_regex,
             chapter_regex,
+            replace_quote,
+            long_preface,
+            divider,
         } = value;
 
         let part_regex = part_regex.unwrap_or_else(|| Regex::new("^第.+[部|卷] (.*)$").unwrap());
@@ -75,6 +90,9 @@ impl From<CLIOptions> for Vec<ConvertOpt> {
                     have_section: true,
                     part_regex: part_regex.clone(),
                     chapter_regex: chapter_regex.clone(),
+                    replace_quote,
+                    long_preface,
+                    divider: divider.clone(),
                 }
             })
             .collect()
@@ -88,4 +106,7 @@ pub struct ConvertOpt {
     pub have_section: bool,
     pub part_regex: Regex,
     pub chapter_regex: Regex,
+    pub replace_quote: bool,
+    pub long_preface: bool,
+    pub divider: Vec<String>,
 }

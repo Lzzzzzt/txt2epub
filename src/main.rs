@@ -16,8 +16,7 @@ fn main() -> Result<(), AnyError> {
         .into_par_iter()
         .for_each(txt2epub);
 
-    let end = start.elapsed()?.as_secs_f32();
-    log::info!("Covert Finish. Cost: {}s", end);
+    log::info!("Covert Finish. Cost: {:?}", start.elapsed()?);
 
     Ok(())
 }

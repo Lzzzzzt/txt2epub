@@ -7,24 +7,27 @@ use log::debug;
 use serde::Serialize;
 use tera::Context;
 
-use crate::{cli::ConvertOpt, error::AnyError, EpubBuilderMut, WriteToEpub, TEMPLATE_ENGINE};
-
-use super::{
-    chapter::Chapter,
-    novel_options::{NovelOptions, NovelOptionsMap},
+use crate::{
+    cli::ConvertOpt,
+    error::AnyError,
+    novel_structure::chapter::{Line, LineType},
+    quote_replace, EpubBuilderMut, WriteToEpub, TEMPLATE_ENGINE,
 };
 
+use super::chapter::Chapter;
+
 #[derive(Debug)]
-pub struct Part {
+pub(crate) struct Part {
+    /// if no is 0, means this part is the only one of novel
     pub no: usize,
     pub title: String,
+    #[allow(unused)]
     pub raw_title: String,
     pub chapters: Vec<Chapter>,
     pub preface: Vec<String>,
     pub start: u64,
     pub end: u64,
     pub current_chapter_no: usize,
-    pub options: NovelOptionsMap,
 }
 
 impl WriteToEpub for Part {
@@ -56,7 +59,6 @@ impl Part {
             preface: vec![],
             start,
             end: 0,
-            options: NovelOptions::default_options(),
             current_chapter_no: 1,
         }
     }
@@ -80,7 +82,6 @@ impl Part {
     where
         F: BufRead + Seek,
     {
-        // let title_regex = Regex::new(&options.chapter_regex)?;
         let title_regex = &options.chapter_regex;
 
         if options.have_section {
@@ -120,17 +121,20 @@ impl Part {
                 self.current_chapter_no += 1;
             } else if !chapter_start && !trimed_line.is_empty() {
                 // if current line is not the chapter content, treat it as the part's preface.
-                if !NovelOptions::is_options_string(&line) {
-                    preface.push(trimed_line.to_string());
-                }
-                // if !line.starts_with("[LongPreface]") {
-                //     preface.push(trimed_line.to_string());
-                // }
+                preface.push(trimed_line.to_string());
             } else if !trimed_line.is_empty() {
                 // if current line is the chapter content, push it.
-                self.current_chapter_mut()
-                    .content
-                    .push(trimed_line.to_string())
+
+                let line_type = if options.divider.iter().any(|d| is_divider(trimed_line, d)) {
+                    LineType::Divider
+                } else {
+                    LineType::Line
+                };
+
+                self.current_chapter_mut().content.push(Line {
+                    line_type,
+                    content: trimed_line.to_string(),
+                })
             }
 
             // quit the loop if read to the chapter end.
@@ -156,29 +160,23 @@ impl Part {
             title,
             preface,
             chapters,
-            options,
             ..
         } = self;
-
-        let mut is_long_preface = false;
-
-        for (k, v) in options {
-            match k {
-                NovelOptions::LongPreface => is_long_preface = v,
-                _ => continue,
-            }
-        }
 
         (
             SerPart {
                 no,
                 title,
                 preface,
-                is_long_preface,
+                is_long_preface: false,
             },
             chapters,
         )
     }
+}
+
+fn is_divider(trimed_line: &str, d: &str) -> bool {
+    d.len() == trimed_line.len() && d == trimed_line
 }
 
 #[derive(Serialize)]
@@ -201,7 +199,7 @@ impl WriteToEpub for SerPart {
             epub.add_content(
                 EpubContent::new(
                     format!("{:02}/intro.xhtml", self.no),
-                    self.into_html_string()?.as_bytes(),
+                    self.into_html_string(options)?.as_bytes(),
                 )
                 .title(title),
             )?;
@@ -212,7 +210,11 @@ impl WriteToEpub for SerPart {
 }
 
 impl SerPart {
-    pub fn into_html_string(self) -> Result<String> {
+    pub fn into_html_string(mut self, opt: &ConvertOpt) -> Result<String> {
+        if opt.replace_quote {
+            self.preface.iter_mut().for_each(quote_replace);
+            quote_replace(&mut self.title);
+        }
         Ok(TEMPLATE_ENGINE.render("part", &Context::from_serialize(self)?)?)
     }
 

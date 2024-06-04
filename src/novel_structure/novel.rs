@@ -3,13 +3,12 @@ use std::io::{BufRead, Seek};
 use anyhow::Result;
 use log::{debug, info};
 
+use super::{part::Part, Metadata};
 use crate::{cli::ConvertOpt, error::AnyError, EpubBuilderMut, WriteToEpub};
-
-use super::{novel_options::NovelOptions, part::Part, Metadata};
 
 #[derive(Debug, Default)]
 pub struct Novel {
-    pub parts: Vec<Part>,
+    pub(crate) parts: Vec<Part>,
     pub metadata: Option<Metadata>,
     current_part_no: usize,
 }
@@ -81,8 +80,8 @@ impl Novel {
 
         self.check_part_range(file, options)?;
 
-        debug!("found {} parts", self.parts.len());
-        debug!(
+        info!("found {} parts", self.parts.len());
+        info!(
             "{:?}",
             self.parts.iter().map(|p| &p.title).collect::<Vec<&_>>()
         );
@@ -102,7 +101,7 @@ impl Novel {
             part.scan_chapters(file, &mut global_chapter_number, options)?;
         }
 
-        debug!("found {} chapters", global_chapter_number);
+        info!("found {} chapters", global_chapter_number);
 
         Ok(())
     }
@@ -120,10 +119,6 @@ impl Novel {
         while let Ok(len) = file.read_line(&mut line) {
             if len == 0 {
                 break;
-            }
-
-            if NovelOptions::is_options_string(&line) {
-                self.patch_options(line.as_str().into())
             }
 
             if let Some(cap) = part_regex.captures(line.trim()) {
@@ -185,11 +180,5 @@ impl Novel {
 
         self.parts[0].end = file.seek(std::io::SeekFrom::End(0))?;
         Ok(())
-    }
-
-    fn patch_options(&mut self, options: NovelOptions) {
-        if let Some(part) = self.parts.last_mut() {
-            part.options.entry(options).and_modify(|v| *v = true);
-        }
     }
 }

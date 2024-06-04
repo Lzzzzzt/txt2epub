@@ -14,5 +14,6 @@ pub fn init() {
     pretty_env_logger::formatted_builder()
         .filter_level(LevelFilter::Info)
         .filter_module("txt2epub", level)
+        .format_module_path(false)
         .init();
 }
